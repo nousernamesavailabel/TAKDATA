@@ -1,0 +1,5 @@
+callsign,MGRS_String,type
+falcon1,"11R LL 12345 12345",F
+falcon2,"11R LL 54321 54321",F
+falcon3,"11R LL 54321 12345",F
+target1,"11R MM 11111 11111",E

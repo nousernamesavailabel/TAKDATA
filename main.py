@@ -1,7 +1,11 @@
 import math
 import csv
+import os
+import tkinter as tk
+from tkinter import filedialog
 from datetime import datetime, timedelta, timezone
 import http.client
+
 
 # Function to convert MGRS to Latitude and Longitude
 def LatLongFromMGRSstring(a):
@@ -71,10 +75,11 @@ def LatLongFromMGRSstring(a):
         print(f"Error converting MGRS: {e}")
         return False, None, None
 
-
 # Function to send CoT Message
 def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_port):
     try:
+        print(f"Attempting to send CoT for {callsign} to {tak_server_address}:{tak_server_port}...")  # Debugging
+
         icontype = "a-n-g" if type == "F" else "a-h-g"
         iconsetpath = "COT_MAPPING_2525B/a-n/a-n-G" if type == "F" else "COT_MAPPING_2525B/a-h/a-h-G"
 
@@ -93,37 +98,135 @@ def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_p
           </event>
         </COT>"""
 
-        conn = http.client.HTTPConnection(tak_server_address, tak_server_port)
-        headers = {"Content-type": "application/xml"}
-        conn.request("POST", "/", body=cot_xml, headers=headers)
+        print("Connecting to TAK server...")  # Debugging
+        print(f"TAK Server Address (raw): [{tak_server_address.encode()}]")  # Show raw bytes
+        print(f"TAK Server Port (raw): [{tak_server_port.encode()}]")  # Show raw bytes
 
-        return 200
+        try:
+            conn = http.client.HTTPConnection(tak_server_address.strip(), int(tak_server_port.strip()), timeout=.5)
+
+            headers = {"Content-type": "application/xml"}
+            conn.request("POST", "/", body=cot_xml, headers=headers)
+
+            response = conn.getresponse()
+            print(f"CoT sent: {response.status}, {response.reason}")
+
+        except Exception as e:
+            print(f"Error sending CoT: {e}")
+
+        finally:
+            try:
+                conn.close()  # Force close after each request
+                print("Connection closed.")
+            except Exception:
+                pass
+
+        #headers = {"Content-type": "application/xml"}
+
+        #print("Sending HTTP request...")  # Debugging
+        #conn.request("POST", "/", body=cot_xml, headers=headers)
+
+        #print("Waiting for response...")  # Debugging
+        #response = conn.getresponse()
+
+        #print(f"CoT sent: {response.status}, {response.reason}")  # Response Debugging
 
     except Exception as e:
         print(f"Error sending CoT: {e}")
-        return 500
 
     finally:
         if conn:
+            print("Closing connection...")  # Debugging
             conn.close()
 
 
-# Read CSV and process entries
-csv_file = "callsigns.csv"
-tak_server_address = "192.168.5.14"
-tak_server_port = 8087
-#type = "F"
+# Function to process CSV
+def prepare_message(file_var, address_entry, port_entry):
+    csv_file = file_var.get().strip()  # Get selected CSV file path
+    tak_server_address = address_entry.get().strip()  # Get user-input address
+    tak_server_port = port_entry.get().strip()  # Get user-input port
 
-with open(csv_file, newline='') as file:
-    importedfile = csv.DictReader(file)
-    for row in importedfile:
-        callsign = row["callsign"]
-        MGRS_String = row["MGRS_String"]
-        type = row["type"]
-        success, lat, long = LatLongFromMGRSstring(MGRS_String)
+    # Debugging print statements to verify extracted values
+    print(f"Extracted TAK Server Address: {tak_server_address}")
+    print(f"Extracted TAK Server Port: {tak_server_port}")
 
-        if success:
-            print(f"Successfully converted {MGRS_String} -> Lat: {lat}, Long: {long}")
-            send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_port)
-        else:
-            print(f"Failed to convert {MGRS_String} for {callsign}")
+    if not csv_file:
+        print("No file selected!")
+        return
+
+    if not tak_server_address or not tak_server_port:
+        print("Error: Server address or port is missing or invalid!")
+        return
+
+    try:
+        with open(csv_file, newline='') as file:
+            importedfile = csv.DictReader(file)
+            for row in importedfile:
+                callsign = row["callsign"]
+                MGRS_String = row["MGRS_String"]
+                type = row["type"]
+                success, lat, long = LatLongFromMGRSstring(MGRS_String)
+
+                if success:
+                    print(f"Successfully converted {MGRS_String} -> Lat: {lat}, Long: {long}")
+                    send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_port)
+                else:
+                    print(f"Failed to convert {MGRS_String} for {callsign}")
+
+    except Exception as e:
+        print(f"Error reading file: {e}")
+
+
+
+# Function to select file
+def import_file(button, file_var):
+    file_path = filedialog.askopenfilename(title="Select a file:",
+                                           filetypes=[("CSV files", "*.csv"), ("All files", "*.*")])
+    if file_path:
+        filename = os.path.basename(file_path)  # Extract only the filename
+        button.config(text=filename)  # Update button text
+        file_var.set(file_path)  # Store file path
+
+
+# Main GUI function
+def main():
+    window = tk.Tk()
+    window.title("CoT Message Sender")
+
+    file_var = tk.StringVar()  # Store file path
+
+    # TAK Server Address
+    tak_server_address_label = tk.Label(window, text="TAK Server Address: ")
+    tak_server_address_label.pack()
+    tak_server_address_entry = tk.Entry(window)
+    tak_server_address_entry.pack()
+    tak_server_address_entry.insert(0, "192.168.5.14")  #default IP address
+
+    # TAK Server Port
+    tak_server_port_label = tk.Label(window, text="TAK Server Port: ")
+    tak_server_port_label.pack()
+    tak_server_port_entry = tk.Entry(window)
+    tak_server_port_entry.pack()
+    tak_server_port_entry.insert(0, "8087") #default port
+
+    # CSV File Selection
+    csv_file_selector_label = tk.Label(window, text="CSV File: ")
+    csv_file_selector_label.pack()
+
+    csv_file_selector_button = tk.Button(window, text="Select File",
+                                         command=lambda: import_file(csv_file_selector_button, file_var))
+    csv_file_selector_button.pack()
+
+    # Send Button
+    send_button = tk.Button(
+        window,
+        text="Send",
+        command=lambda: prepare_message(file_var, tak_server_address_entry, tak_server_port_entry)
+    )
+    send_button.pack()
+
+    window.mainloop()
+
+
+if __name__ == "__main__":
+    main()
