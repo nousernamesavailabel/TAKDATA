@@ -1,6 +1,6 @@
 import math
 import csv
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import http.client
 
 # Function to convert MGRS to Latitude and Longitude
@@ -78,7 +78,7 @@ def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_p
         icontype = "a-n-g" if type == "F" else "a-h-g"
         iconsetpath = "COT_MAPPING_2525B/a-n/a-n-G" if type == "F" else "COT_MAPPING_2525B/a-h/a-h-G"
 
-        current_time = datetime.utcnow()
+        current_time = datetime.now(timezone.utc)
         current_time_str = current_time.strftime('%Y-%m-%dT%H:%M:%SZ')
         stale_time_str = (current_time + timedelta(hours=24)).strftime('%Y-%m-%dT%H:%M:%SZ')
 
@@ -115,8 +115,8 @@ tak_server_port = 8087
 #type = "F"
 
 with open(csv_file, newline='') as file:
-    reader = csv.DictReader(file)
-    for row in reader:
+    importedfile = csv.DictReader(file)
+    for row in importedfile:
         callsign = row["callsign"]
         MGRS_String = row["MGRS_String"]
         type = row["type"]
