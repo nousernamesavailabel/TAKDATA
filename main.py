@@ -103,16 +103,18 @@ def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_p
         print(f"TAK Server Port (raw): [{tak_server_port.encode()}]")  # Show raw bytes
 
         try:
-            conn = http.client.HTTPConnection(tak_server_address.strip(), int(tak_server_port.strip()), timeout=.5)
+            conn = http.client.HTTPConnection(tak_server_address.strip(), int(tak_server_port.strip()), timeout=3)
 
             headers = {"Content-type": "application/xml"}
             conn.request("POST", "/", body=cot_xml, headers=headers)
 
-            response = conn.getresponse()
-            print(f"CoT sent: {response.status}, {response.reason}")
+            #response = conn.getresponse()
+            #print(f"CoT sent: {response.status}, {response.reason}")
+            return 200
 
         except Exception as e:
             print(f"Error sending CoT: {e}")
+            return 500
 
         finally:
             try:
