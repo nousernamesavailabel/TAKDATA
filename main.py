@@ -2,85 +2,27 @@ import math
 import csv
 import os
 import tkinter as tk
-from tkinter import filedialog
+from tkinter import filedialog, ttk
 from datetime import datetime, timedelta, timezone
 import http.client
-
-
-# Function to convert MGRS to Latitude and Longitude
-def LatLongFromMGRSstring(a):
-    try:
-        b = a.strip().split()
-        if not b or len(b) != 4:
-            return False, None, None
-
-        c = b[0][0] if len(b[0]) < 3 else b[0][:2]
-        d = b[0][1] if len(b[0]) < 3 else b[0][2]
-        e = (int(c) * 6 - 183) * math.pi / 180
-
-        f = ["ABCDEFGH", "JKLMNPQR", "STUVWXYZ"][(int(c) - 1) % 3].find(b[1][0]) + 1
-        g = "CDEFGHJKLMNPQRSTUVWXX".find(d)
-
-        h = ["ABCDEFGHJKLMNPQRSTUV", "FGHJKLMNPQRSTUVABCDE"][(int(c) - 1) % 2].find(b[1][1])
-        i = [1.1, 2.0, 2.8, 3.7, 4.6, 5.5, 6.4, 7.3, 8.2, 9.1, 0, 0.8, 1.7, 2.6, 3.5, 4.4, 5.3, 6.2, 7.0, 7.9]
-        j = [0, 2, 2, 2, 4, 4, 6, 6, 8, 8, 0, 0, 0, 2, 2, 4, 4, 6, 6, 6]
-        k = i[g]
-        l = j[g] + h / 10
-
-        if l < k:
-            l += 2
-
-        m = f * 100000.0 + int(b[2])
-        n = l * 1000000 + int(b[3])
-        m -= 500000.0
-
-        if d < 'N':
-            n -= 10000000.0
-
-        m /= 0.9996
-        n /= 0.9996
-
-        o = n / 6367449.14570093
-        p = o + (0.0025188266133249035 * math.sin(2.0 * o)) + (0.0000037009491206268 * math.sin(4.0 * o)) + (
-                    0.0000000074477705265 * math.sin(6.0 * o)) + (0.0000000000170359940 * math.sin(8.0 * o))
-        q = math.tan(p)
-        r = q * q
-        s = r * r
-        t = math.cos(p)
-        u = 0.006739496819936062 * t ** 2
-        v = 40680631590769 / (6356752.314 * math.sqrt(1 + u))
-        w = v
-        x = 1.0 / (w * t)
-        w *= v
-        y = q / (2.0 * w)
-        w *= v
-        z = 1.0 / (6.0 * w * t)
-        w *= v
-        aa = q / (24.0 * w)
-        w *= v
-        ab = 1.0 / (120.0 * w * t)
-        w *= v
-        ac = q / (720.0 * w)
-        w *= v
-        ad = 1.0 / (5040.0 * w * t)
-        w *= v
-        ae = q / (40320.0 * w)
-
-        lat = p + y * (-1.0 - u) * (m ** 2) + aa * (5.0 + 3.0 * r + 6.0 * u - 6.0 * r * u - 3.0 * (u * u) - 9.0 * r * (u * u)) * (m ** 4) + ac * (-61.0 - 90.0 * r - 45.0 * s - 107.0 * u + 162.0 * r * u) * (m ** 6) + ae * (1385.0 + 3633.0 * r + 4095.0 * s + 1575 * (s * r)) * (m ** 8)
-        lng = e + x * m + z * (-1.0 - 2 * r - u) * (m ** 3) + ab * (5.0 + 28.0 * r + 24.0 * s + 6.0 * u + 8.0 * r * u) * (m ** 5) + ad * (-61.0 - 662.0 * r - 1320.0 * s - 720.0 * (s * r)) * (m ** 7)
-
-        return True, lat * 180 / math.pi, lng * 180 / math.pi
-
-    except Exception as e:
-        print(f"Error converting MGRS: {e}")
-        return False, None, None
+from mgrsconv import *
 
 # Function to send CoT Message
 def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_port):
     try:
         print(f"Attempting to send CoT for {callsign} to {tak_server_address}:{tak_server_port}...")  # Debugging
 
-        icontype = "a-n-g" if type == "F" else "a-h-g"
+        #icontype = "a-n-g" if type == "F" else "a-h-g"
+        if type == "F":
+            icontype = "a-n-g"
+        elif type == "E":
+            icontype = "a-h-g"
+        elif type == "C":
+            icontype = "a-f-g"
+        else:
+            icontype = "a-n-g"
+            print(f"Icon Type could not be parsed.")
+
         iconsetpath = "COT_MAPPING_2525B/a-n/a-n-G" if type == "F" else "COT_MAPPING_2525B/a-h/a-h-G"
 
         current_time = datetime.now(timezone.utc)
@@ -167,7 +109,7 @@ def prepare_message(file_var, address_entry, port_entry):
                 callsign = row["callsign"]
                 MGRS_String = row["MGRS_String"]
                 type = row["type"]
-                success, lat, long = LatLongFromMGRSstring(MGRS_String)
+                success, lat, long = mgrs2dd(MGRS_String)
 
                 if success:
                     print(f"Successfully converted {MGRS_String} -> Lat: {lat}, Long: {long}")
@@ -190,44 +132,96 @@ def import_file(button, file_var):
         file_var.set(file_path)  # Store file path
 
 
+# Function to add stages
+def update_stages(number_of_stages_entry):
+    int_stages = int(number_of_stages_entry.get())
+    for stage in int_stages:
+        print(stage)
+
+
 # Main GUI function
 def main():
     window = tk.Tk()
     window.title("CoT Message Sender")
+    window.geometry("400x200")
+
+    notebook = ttk.Notebook(window)
+    notebook.pack(expand=True, fill="both")
+
+    tab1 = ttk.Frame(notebook)
+    notebook.add(tab1, text="CSV To TAK")
+    tab2 = ttk.Frame(notebook)
+    notebook.add(tab2, text="CSV Scenario to TAK")
+
+    ################################## TAB 1 ##################################################
 
     file_var = tk.StringVar()  # Store file path
 
     # TAK Server Address
-    tak_server_address_label = tk.Label(window, text="TAK Server Address: ")
+    tak_server_address_label = tk.Label(tab1, text="TAK Server Address: ")
     tak_server_address_label.pack()
-    tak_server_address_entry = tk.Entry(window)
+    tak_server_address_entry = tk.Entry(tab1)
     tak_server_address_entry.pack()
     tak_server_address_entry.insert(0, "192.168.5.14")  #default IP address
 
     # TAK Server Port
-    tak_server_port_label = tk.Label(window, text="TAK Server Port: ")
+    tak_server_port_label = tk.Label(tab1, text="TAK Server Port: ")
     tak_server_port_label.pack()
-    tak_server_port_entry = tk.Entry(window)
+    tak_server_port_entry = tk.Entry(tab1)
     tak_server_port_entry.pack()
     tak_server_port_entry.insert(0, "8087") #default port
 
     # CSV File Selection
-    csv_file_selector_label = tk.Label(window, text="CSV File: ")
+    csv_file_selector_label = tk.Label(tab1, text="CSV File: ")
     csv_file_selector_label.pack()
 
-    csv_file_selector_button = tk.Button(window, text="Select File",
+    csv_file_selector_button = tk.Button(tab1, text="Select File",
                                          command=lambda: import_file(csv_file_selector_button, file_var))
     csv_file_selector_button.pack()
 
     # Send Button
     send_button = tk.Button(
-        window,
+        tab1,
         text="Send",
         command=lambda: prepare_message(file_var, tak_server_address_entry, tak_server_port_entry)
     )
     send_button.pack()
 
+
+
+    ################################## TAB 2 ##################################################
+
+    tak_server_address_label_tab2 = tk.Label(tab2, text="TAK Server Address:")
+    tak_server_address_label_tab2.pack()
+    tak_server_address_entry_tab2 = tk.Entry(tab2)
+    tak_server_address_entry_tab2.pack()
+    tak_server_address_entry_tab2.insert(0, "192.168.5.14")  # default IP address
+
+    tak_server_port_label_tab2 = tk.Label(tab2, text="TAK Server Port:")
+    tak_server_port_label_tab2.pack()
+    tak_server_port_entry_tab2 = tk.Entry(tab2)
+    tak_server_port_entry_tab2.pack()
+    tak_server_port_entry_tab2.insert(0, "8087")
+
+    number_of_stages_label = tk.Label(tab2, text="Number of Stages:")
+    number_of_stages_label.pack()
+    number_of_stages_entry = tk.Entry(tab2)
+    number_of_stages_entry.pack()
+
+    number_of_stages_button = tk.Button(tab2, text="Update Stages", command=lambda: update_stages(number_of_stages_entry))
+    number_of_stages_button.pack()
+
+    mgrs = "17R LL 12345 54321"
+    ll = mgrs2dd(mgrs)
+    print(ll)
+
+
+
+
+
     window.mainloop()
+
+
 
 
 if __name__ == "__main__":
