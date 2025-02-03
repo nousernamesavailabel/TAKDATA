@@ -1,0 +1,7 @@
+callsign,MGRS_String,type
+falcon1,31N AA 66021 00000,F
+falcon2,31N AA 66021 00001,F
+falcon3,31N AA 66021 00002,F
+target1,31N AA 66021 00003,E
+target2,31N AA 66021 00003,E
+Coalition,31N AA 66021 00003,E,C
