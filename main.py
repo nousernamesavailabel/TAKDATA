@@ -7,6 +7,11 @@ from datetime import datetime, timedelta, timezone
 import http.client
 from mgrsconv import *
 
+global button_width
+global entry_width
+button_width = 20
+entry_width = 20
+
 # Function to send CoT Message
 def send_cot_message(callsign, lat, long, type, tak_server_address, tak_server_port):
     try:
@@ -132,18 +137,47 @@ def import_file(button, file_var):
         file_var.set(file_path)  # Store file path
 
 
-# Function to add stages
-def update_stages(number_of_stages_entry):
-    int_stages = int(number_of_stages_entry.get())
-    for stage in int_stages:
-        print(stage)
-
-
 # Main GUI function
 def main():
+    ################################## Functions ##################################################
+    # Function to add stages
+    def update_stages(number_of_stages_entry):
+        window.geometry("350x150") #Reset window size
+        csv_file_selector_label_ = {}  # define the label dictionary
+        csv_file_selector_button_ = {}  # define the label dictionary
+        send_button_ = {} # define send button dictionary
+        file_var_ = {} # empty file_var
+
+        int_stages = int(number_of_stages_entry.get())
+        print(f"Stages: {int_stages}")
+
+        for stage in range(int_stages):
+
+            print(f"INT Stage: ", stage, "Type: ", type(stage))
+            str_stage = str(stage)
+            print(f"STR Stage: ", str_stage, "Type: ", type(str_stage))
+
+            file_var_[stage] = tk.StringVar()
+
+            csv_file_selector_label_[stage] = tk.Label(tab2, text=(f"CSV File Phase: {str_stage}"))
+            csv_file_selector_label_[stage].grid(row=(8+stage), column=0)
+
+            csv_file_selector_button_[stage] = tk.Button(tab2, text=f"Phase {str_stage}", command=lambda s=stage: import_file(csv_file_selector_button_[s], file_var_[s]))
+            csv_file_selector_button_[stage].grid(row=(8+stage), column=1)
+
+            send_button_[stage] = tk.Button(tab2, text=f"Send Phase {str_stage}", command=lambda s=stage: prepare_message(file_var_[s], tak_server_address_entry_tab2, tak_server_port_entry_tab2))
+            send_button_[stage].grid(row=(8+stage), column=2)
+
+            window.update_idletasks()
+            width = window.winfo_width()
+            height = window.winfo_height() + 25
+            window.geometry(f"{width}x{height}")
+
+    ################################## Window ##################################################
+
     window = tk.Tk()
     window.title("CoT Message Sender")
-    window.geometry("400x200")
+    window.geometry("350x150")
 
     notebook = ttk.Notebook(window)
     notebook.pack(expand=True, fill="both")
@@ -159,61 +193,62 @@ def main():
 
     # TAK Server Address
     tak_server_address_label = tk.Label(tab1, text="TAK Server Address: ")
-    tak_server_address_label.pack()
+    tak_server_address_label.grid(row=0, column=0)
     tak_server_address_entry = tk.Entry(tab1)
-    tak_server_address_entry.pack()
+    tak_server_address_entry.grid(row=0, column=1)
     tak_server_address_entry.insert(0, "192.168.5.14")  #default IP address
 
     # TAK Server Port
     tak_server_port_label = tk.Label(tab1, text="TAK Server Port: ")
-    tak_server_port_label.pack()
+    tak_server_port_label.grid(row=2, column=0)
     tak_server_port_entry = tk.Entry(tab1)
-    tak_server_port_entry.pack()
+    tak_server_port_entry.grid(row=2, column=1)
     tak_server_port_entry.insert(0, "8087") #default port
 
     # CSV File Selection
     csv_file_selector_label = tk.Label(tab1, text="CSV File: ")
-    csv_file_selector_label.pack()
+    csv_file_selector_label.grid(row=4, column=0)
 
     csv_file_selector_button = tk.Button(tab1, text="Select File",
                                          command=lambda: import_file(csv_file_selector_button, file_var))
-    csv_file_selector_button.pack()
+    csv_file_selector_button.grid(row=4, column=1)
 
     # Send Button
     send_button = tk.Button(
         tab1,
+        width = 40,
         text="Send",
         command=lambda: prepare_message(file_var, tak_server_address_entry, tak_server_port_entry)
     )
-    send_button.pack()
+    send_button.grid(row=6, column=0, columnspan=2)
 
 
 
     ################################## TAB 2 ##################################################
 
     tak_server_address_label_tab2 = tk.Label(tab2, text="TAK Server Address:")
-    tak_server_address_label_tab2.pack()
+    tak_server_address_label_tab2.grid(row=0, column=0)
     tak_server_address_entry_tab2 = tk.Entry(tab2)
-    tak_server_address_entry_tab2.pack()
+    tak_server_address_entry_tab2.grid(row=0, column=1)
     tak_server_address_entry_tab2.insert(0, "192.168.5.14")  # default IP address
 
     tak_server_port_label_tab2 = tk.Label(tab2, text="TAK Server Port:")
-    tak_server_port_label_tab2.pack()
+    tak_server_port_label_tab2.grid(row=2, column=0)
     tak_server_port_entry_tab2 = tk.Entry(tab2)
-    tak_server_port_entry_tab2.pack()
+    tak_server_port_entry_tab2.grid(row=2, column=1)
     tak_server_port_entry_tab2.insert(0, "8087")
 
     number_of_stages_label = tk.Label(tab2, text="Number of Stages:")
-    number_of_stages_label.pack()
+    number_of_stages_label.grid(row=4, column=0)
     number_of_stages_entry = tk.Entry(tab2)
-    number_of_stages_entry.pack()
+    number_of_stages_entry.grid(row=4, column=1)
 
     number_of_stages_button = tk.Button(tab2, text="Update Stages", command=lambda: update_stages(number_of_stages_entry))
-    number_of_stages_button.pack()
+    number_of_stages_button.grid(row=6, column=0, columnspan=2)
 
-    mgrs = "17R LL 12345 54321"
-    ll = mgrs2dd(mgrs)
-    print(ll)
+    #mgrs = "17R LL 12345 54321"
+    #ll = mgrs2dd(mgrs)
+    #print(ll)
 
 
 
